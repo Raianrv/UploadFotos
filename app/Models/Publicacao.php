@@ -4,16 +4,28 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Publicacao extends Model
 {
+    protected $table = 'publicacoes';
+    protected $primaryKey = 'id';
 
-    use HasFactory;
+    protected $fillable = [
+        'user_id',
+        'foto_url',
+        'status',
+        'titulo',
+        'local',
+        'data'
+    ];
 
-    protected $fillable = ['titulo', 'foto_url', 'user_id', 'status'];
-
-    public function usuario() {
-        return $this->belongsTo('App\Models\User', 'user_id');
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
+    use HasFactory;
 }
+
+
