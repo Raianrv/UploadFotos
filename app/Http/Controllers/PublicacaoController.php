@@ -9,22 +9,21 @@ use App\Models\Publicacao;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 
+
 class PublicacaoController extends Controller
 {
-    // Exibir todas as publicações pendentes na tela inicial
+    
     public function index()
     {
-        // Verificar se a tabela 'publicacoes' existe
-        if (Schema::hasTable('publicacoes')) {
-            $publicacoes = Publicacao::where('status', 'pendente')->get();
+        if ( $publicacoes = Publicacao::where('status', 'pendente')->get()) {
+            
         } else {
-            $publicacoes = collect(); // Retorna uma coleção vazia se a tabela não existir
+            $publicacoes = collect(); 
         }
 
         return view('welcome', compact('publicacoes'));
     }
 
-    // Exibir formulário de publicação
     public function create()
     {
         return view('publicacao.publicar');
@@ -33,7 +32,7 @@ class PublicacaoController extends Controller
 
     public function store(Request $request)
     {
-        // Validação do formulário
+       
         $request->validate([
             'titulo' => 'required|string|max:255',
             'arquivo' => 'required|file|mimes:jpeg,png,jpg,gif,svg|max:2048',
@@ -41,36 +40,46 @@ class PublicacaoController extends Controller
             'data' => 'nullable|date',
         ]);
 
-        // Criação da nova publicação
         $publicacao = new Publicacao;
         $publicacao->titulo = $request->titulo;
         $publicacao->local = $request->local;
         $publicacao->data = $request->data;
 
-        // Upload da imagem
         if ($request->hasFile('arquivo') && $request->file('arquivo')->isValid()) {
             $requestImage = $request->arquivo;
             $extension = $requestImage->extension();
             $imageName = md5($requestImage->getClientOriginalName() . strtotime("now")) . "." . $extension;
-            $requestImage->move(public_path('uploads'), $imageName);
-            $publicacao->foto_url = $imageName;
+            $path = 'uploads/' . $imageName;
+
+            $stream = fopen($requestImage->getPathname(), 'r+');
+            Storage::disk('s3')->put($path, $stream, 'public');
+            fclose($stream);
+
+            $publicacao->foto_url = Storage::disk('s3')->url($path);
         }
 
-        // Associa a publicação ao usuário logado
         $user = Auth::user();
         $publicacao->user_id = $user->id;
         $publicacao->status = 'pendente';
 
-        // Salva a publicação no banco de dados
         $publicacao->save();
 
         return redirect()->route('dashboard')->with('sucesso', 'Foto publicada com sucesso!');
     }
 
-    
+    public function destroy($id) {
+
+        $publicacao = Publicacao::find($id);
+
+        if ($publicacao) {
+            $publicacao->delete();
+            return redirect()->route('dashboard')->with('sucesso', 'Publicação deletada com sucesso');
+        } else {
+            return redirect()->route('dashboard')->with('erro', 'Publicação não econtrada');
+        }
+    }
     
 
-    // Aprovar publicação
     public function approve($id) { 
         $publicacao = Publicacao::findOrFail($id); 
         $publicacao->status = 'aprovado'; 
@@ -79,7 +88,6 @@ class PublicacaoController extends Controller
         return redirect()->route('dashboard')->with('sucesso', 'Publicação aprovada!'); 
     }
 
-    // Rejeitar publicação
     public function reject($id) { 
         $publicacao = Publicacao::findOrFail($id); 
         $publicacao->status = 'rejeitado'; 
@@ -88,7 +96,6 @@ class PublicacaoController extends Controller
         return redirect()->route('dashboard')->with('sucesso', 'Publicação rejeitada!'); 
     }
 
-    // Exibir publicações do usuário logado no dashboard
     public function dashboard()
     {
         $publicacoes = Publicacao::where('user_id', Auth::id())->get();

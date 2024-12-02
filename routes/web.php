@@ -13,6 +13,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [PublicacaoController::class, 'dashboard'])->name('dashboard');
     Route::patch('/publicacao/{id}/aprovar', [PublicacaoController::class, 'approve'])->name('publicacao.approve'); 
     Route::patch('/publicacao/{id}/rejeitar', [PublicacaoController::class, 'reject'])->name('publicacao.reject');
+    Route::delete('publicacao/{id}', [PublicacaoController::class, 'destroy'])->name('publicacao.destroy');
 });
 
 
